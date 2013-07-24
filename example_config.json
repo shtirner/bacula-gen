@@ -1,0 +1,31 @@
+{
+    "servers": {
+        "test_server": {
+            "ip": "1.2.4.5",
+            "exclude": [
+                "/proc",
+                "/sys"
+            ],
+            "runs": [
+                "Full on sat at 20:05"
+            ],
+	    "storage": 1
+        }
+    },
+    "common_excludes": [
+        "/proc",
+        "/dev",
+        "/sys",
+        "/tmp",
+        "/var/tmp",
+        "/var/log"
+    ],
+    "common_exclude_patterns": [
+        "/var/lib/lxc/*/rootfs/proc",
+        "/var/lib/lxc/*/rootfs/dev",
+        "/var/lib/lxc/*/rootfs/sys",
+        "/var/lib/lxc/*/rootfs/tmp",
+        "/var/lib/lxc/*/rootfs/var/tmp",
+        "/var/lib/lxc/*/rootfs/var/log"
+    ]
+}

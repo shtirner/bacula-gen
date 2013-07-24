@@ -1,0 +1,126 @@
+Director {
+	Name = MainDirector
+	DIRport = 9101
+	QueryFile = "/etc/bacula/scripts/query.sql"
+	WorkingDirectory = "/var/lib/bacula"
+	PidDirectory = "/run/bacula"
+	Maximum Concurrent Jobs = 5
+	Password = "password"
+	Messages = Daemon
+	DirAddress = 1.2.3.4
+}
+{% for server in servers %}
+Client {
+    Name = {{ server }}
+    Address = {{ servers[server]["ip"] }}
+    FDPort = 9102
+    Catalog = MyCatalog
+    Password = "password"
+    File Retention = 10 days
+    Job Retention = 20 days
+    Maximum Concurrent Jobs = 2
+    AutoPrune = yes
+}
+Schedule {
+	Name = "Schedule_{{ server }}"
+	{% for run in servers[server]["runs"] %}
+	Run = {{ run }}
+	{% endfor %}
+}
+Job {
+	Name = "{{ server }}_backup"
+	Type = Backup
+	Client = {{ server }}
+	FileSet = "FileSet_{{ server }}"
+	Schedule = "Schedule_{{ serverName }}"
+	Storage = {{ server }}
+	Messages = Standard
+	Pool = {{ server }}_Pool
+	Priority = 10
+	Write Bootstrap = "/var/tmp/%c.bsr"
+}
+Job {
+	Name = "Restore_{{ server }}"
+	Type = Restore
+	Client= {{ server }}
+	FileSet= "FileSet_{{ server }}"
+	Storage = {{ server }}
+	Pool = {{ server }}_Pool
+	Messages = Standard
+	Where = /var/bacula-restores
+}
+Pool {
+    Name = {{ server }}_Pool
+    Pool Type = Backup
+    Recycle = yes
+    AutoPrune = yes
+    Volume Retention = 10 days
+    Maximum Volume Jobs = 1
+    Maximum Volume Bytes = 1000G
+    Maximum Volumes = 15
+    Label Format = "{{ server }}-"
+    Storage = {{ server }}
+}
+FileSet {
+	Name = "FileSet_{{ server }}"
+	Include {
+		Options {
+			signature = MD5
+			compression = GZIP
+			recurse = yes
+			onefs = no
+		}
+		Options {
+			Exclude = yes
+			{%- for pattern in common_exclude_patterns %}
+			wilddir = {{ pattern }}
+			{%- endfor -%}
+		}
+		File = /
+	}
+	Exclude {
+		{% for exclude in common_exclude %}
+		File = {{ exclude }}
+		{% endfor %}
+	}
+}
+
+Storage {
+	Name = {{ server }}
+	Address = 1.2.3.4
+	SDPort = 9103
+	Password = "password"
+	Device = Storage_{{ server }}
+	Media Type = File
+}
+{% endfor %}
+
+Catalog {
+	Name = MyCatalog
+	dbname = "bacula"
+	DB Address = "127.0.0.1"
+	dbuser = "bacula_db"
+	dbpassword = "password"
+}
+Messages {
+	Name = Standard
+	mailcommand = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: %t %e of %c %l\" %r"
+	operatorcommand = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula: Intervention needed for %j\" %r"
+	mail = mail@example.com = all, !skipped
+	operator = root = mount
+	console = all, !skipped, !saved
+	append = "/var/log/bacula/bacula.log" = all, !skipped
+	catalog = all
+}
+Messages {
+	Name = Daemon
+	mailcommand = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula\) \<%r\>\" -s \"Bacula daemon message\" %r"
+	mail = mail@example.com = all, !skipped
+	console = all, !skipped, !saved
+	append = "/var/log/bacula/bacula.log" = all, !skipped
+}
+Console {
+	Name = bacula-console
+	Password = "password"
+	CommandACL = status, .status
+}
